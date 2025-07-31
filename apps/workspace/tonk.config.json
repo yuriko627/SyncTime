@@ -1,0 +1,9 @@
+{
+  "name": "my-tonk-space",
+  "plan": {
+    "platform": "workspace",
+    "projectName": "my-tonk-space",
+    "description": "my tonk workspace"
+  },
+  "template": "workspace"
+}
