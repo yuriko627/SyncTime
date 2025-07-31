@@ -12,6 +12,7 @@ apps/*/build/
 apps/*/out/
 apps/*/.next/
 apps/*/.turbo/
+apps/workspace/console/dev-dist/
 
 
 # Logs
