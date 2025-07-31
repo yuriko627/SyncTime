@@ -1,0 +1,8 @@
+{
+	"name": "sync-time",
+	"private": true,
+	"workspaces": [
+	  "apps/*",
+	  "packages/*"
+	]
+  }

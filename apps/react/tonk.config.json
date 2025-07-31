@@ -1,0 +1,9 @@
+{
+  "name": "tonk-scheduler-react",
+  "plan": {
+    "platform": "react",
+    "projectName": "tonk-scheduler-react",
+    "description": "local first app for multiple people to collaboratively make a schedule "
+  },
+  "template": "react"
+}

@@ -1,0 +1,9 @@
+{
+  "name": "tonk-scheduler-worker",
+  "plan": {
+    "platform": "worker",
+    "projectName": "tonk-scheduler-worker",
+    "description": "Backend for a private & collaborative scheduling app"
+  },
+  "template": "worker"
+}
