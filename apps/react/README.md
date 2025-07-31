@@ -1,6 +1,27 @@
-# Tonk App
+##  React App
 
-Welcome to your new Tonk application!
+  - Purpose: Frontend client for collaborative scheduling
+  - Framework: React 19 with TypeScript
+  - Build Tool: Vite
+  - Styling: Tailwind CSS
+  - State Management: Zustand stores
+  - Key Features:
+    - PWA support with service worker
+    - Local-first architecture using Automerge
+    - Calendar integration components
+    - Real-time synchronization via keepsync
+    - Development and production server setup
+
+  ### Key Components:
+  - AvailabilityView.tsx - Display user availability
+  - CalendarIntegration.tsx - External calendar sync
+  - CreateEventPage.tsx - Event creation interface
+  - EventDashboard.tsx - Event management
+  - ScheduleDashboard.tsx - Schedule overview
+
+  Stores:
+  - eventStore.ts - Event state management
+  - scheduleStore.ts - Schedule state management
 
 ## Development
 
