@@ -1,17 +1,19 @@
-import { OAuth2Client } from 'google-auth-library';
-import * as fs from 'fs';
-import * as path from 'path';
+import { OAuth2Client } from "google-auth-library"
+import * as fs from "fs"
+import * as path from "path"
 
 /**
  * Google OAuth service for calendar authentication
  */
 export class GoogleOAuthService {
-  private oauth2Client: OAuth2Client;
-  private readonly SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
-  private readonly REDIRECT_URI = 'http://localhost:5555/auth/google/callback';
+  private oauth2Client: OAuth2Client
+  private readonly SCOPES = [
+    "https://www.googleapis.com/auth/calendar.readonly"
+  ]
+  private readonly REDIRECT_URI = "http://localhost:5555/auth/google/callback"
 
   constructor() {
-    this.oauth2Client = this.initializeOAuthClient();
+    this.oauth2Client = this.initializeOAuthClient()
   }
 
   /**
@@ -19,30 +21,38 @@ export class GoogleOAuthService {
    */
   private initializeOAuthClient(): OAuth2Client {
     try {
-      const credentialsPath = process.env.GOOGLE_CREDENTIALS_PATH;
+      const credentialsPath = process.env.GOOGLE_CREDENTIALS_PATH
       if (!credentialsPath) {
-        throw new Error('GOOGLE_CREDENTIALS_PATH not set in environment variables');
+        throw new Error(
+          "GOOGLE_CREDENTIALS_PATH not set in environment variables"
+        )
       }
 
-      const credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-      
+      const credentials = JSON.parse(fs.readFileSync(credentialsPath, "utf8"))
+
       // Check if it's a service account or OAuth client credentials
-      if (credentials.type === 'service_account') {
-        throw new Error('Service account credentials detected. OAuth flow requires OAuth 2.0 client credentials.');
+      if (credentials.type === "service_account") {
+        throw new Error(
+          "Service account credentials detected. OAuth flow requires OAuth 2.0 client credentials."
+        )
       }
 
       // Extract client credentials for OAuth
-      const clientId = credentials.web?.client_id || credentials.installed?.client_id;
-      const clientSecret = credentials.web?.client_secret || credentials.installed?.client_secret;
+      const clientId =
+        credentials.web?.client_id || credentials.installed?.client_id
+      const clientSecret =
+        credentials.web?.client_secret || credentials.installed?.client_secret
 
       if (!clientId || !clientSecret) {
-        throw new Error('Missing client_id or client_secret in credentials file');
+        throw new Error(
+          "Missing client_id or client_secret in credentials file"
+        )
       }
 
-      return new OAuth2Client(clientId, clientSecret, this.REDIRECT_URI);
+      return new OAuth2Client(clientId, clientSecret, this.REDIRECT_URI)
     } catch (error) {
-      console.error('Error initializing OAuth client:', error);
-      throw error;
+      console.error("Error initializing OAuth client:", error)
+      throw error
     }
   }
 
@@ -51,45 +61,48 @@ export class GoogleOAuthService {
    */
   getAuthUrl(userId: string): string {
     const authUrl = this.oauth2Client.generateAuthUrl({
-      access_type: 'offline',
+      access_type: "offline",
       scope: this.SCOPES,
       state: userId, // Pass userId in state parameter
-      prompt: 'consent' // Force consent screen to get refresh token
-    });
+      prompt: "consent" // Force consent screen to get refresh token
+    })
 
-    return authUrl;
+    return authUrl
   }
 
   /**
    * Handle OAuth callback and get access token
    */
-  async handleCallback(code: string, state: string): Promise<{
-    userId: string;
-    tokens: any;
-    success: boolean;
+  async handleCallback(
+    code: string,
+    state: string
+  ): Promise<{
+    userId: string
+    tokens: any
+    success: boolean
   }> {
     try {
-      const { tokens } = await this.oauth2Client.getToken(code);
-      
+      const { tokens } = await this.oauth2Client.getToken(code)
+
       // Set credentials for this client
-      this.oauth2Client.setCredentials(tokens);
-      
+      this.oauth2Client.setCredentials(tokens)
+
       // In a real app, you'd store these tokens securely (database, encrypted storage)
       // For now, we'll store them in memory/temporary storage
-      this.storeUserTokens(state, tokens);
+      this.storeUserTokens(state, tokens)
 
       return {
         userId: state,
         tokens,
         success: true
-      };
+      }
     } catch (error) {
-      console.error('Error handling OAuth callback:', error);
+      console.error("Error handling OAuth callback:", error)
       return {
         userId: state,
         tokens: null,
         success: false
-      };
+      }
     }
   }
 
@@ -100,26 +113,26 @@ export class GoogleOAuthService {
     // For demo purposes, store in a simple in-memory store
     // In production, use encrypted database storage
     if (!global.userTokens) {
-      global.userTokens = {};
+      global.userTokens = {}
     }
-    global.userTokens[userId] = tokens;
-    
-    console.log(`Stored tokens for user ${userId}`);
+    global.userTokens[userId] = tokens
+
+    console.log(`Stored google calendar access tokens for user ${userId}`)
   }
 
   /**
    * Get stored tokens for a user
    */
   getUserTokens(userId: string): any {
-    return global.userTokens?.[userId] || null;
+    return global.userTokens?.[userId] || null
   }
 
   /**
    * Check if user is authenticated
    */
   isUserAuthenticated(userId: string): boolean {
-    const tokens = this.getUserTokens(userId);
-    return tokens && tokens.access_token;
+    const tokens = this.getUserTokens(userId)
+    return tokens && tokens.access_token
   }
 
   /**
@@ -127,20 +140,20 @@ export class GoogleOAuthService {
    */
   async revokeUserAuth(userId: string): Promise<boolean> {
     try {
-      const tokens = this.getUserTokens(userId);
+      const tokens = this.getUserTokens(userId)
       if (tokens && tokens.access_token) {
-        await this.oauth2Client.revokeToken(tokens.access_token);
+        await this.oauth2Client.revokeToken(tokens.access_token)
       }
-      
+
       // Remove from storage
       if (global.userTokens && global.userTokens[userId]) {
-        delete global.userTokens[userId];
+        delete global.userTokens[userId]
       }
-      
-      return true;
+
+      return true
     } catch (error) {
-      console.error('Error revoking auth:', error);
-      return false;
+      console.error("Error revoking auth:", error)
+      return false
     }
   }
 
@@ -148,17 +161,17 @@ export class GoogleOAuthService {
    * Get OAuth client configured for a specific user
    */
   getClientForUser(userId: string): OAuth2Client | null {
-    const tokens = this.getUserTokens(userId);
-    if (!tokens) return null;
+    const tokens = this.getUserTokens(userId)
+    if (!tokens) return null
 
     const client = new OAuth2Client(
       this.oauth2Client._clientId,
       this.oauth2Client._clientSecret,
       this.REDIRECT_URI
-    );
-    client.setCredentials(tokens);
-    return client;
+    )
+    client.setCredentials(tokens)
+    return client
   }
 }
 
-export const googleOAuthService = new GoogleOAuthService();
+export const googleOAuthService = new GoogleOAuthService()

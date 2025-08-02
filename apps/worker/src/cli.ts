@@ -36,7 +36,7 @@ program
       await startWorker({
         port: parseInt(options.port, 10)
       })
-      console.log(`tonk-scheduler-worker worker is running`)
+      console.log(`scheduler worker is running`)
     } catch (error) {
       console.error("Failed to start worker:", error)
       process.exit(1)
