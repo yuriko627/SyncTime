@@ -1,10 +1,10 @@
 {
-  "name": "tonk-scheduler-worker",
+  "name": "synctime-worker",
   "version": "1.0.0",
   "description": "App to make a schedule with other people privately",
   "main": "dist/index.js",
   "bin": {
-    "tonk-scheduler-worker": "dist/cli.js"
+    "synctime-worker": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc",

@@ -1,9 +1,9 @@
 {
-  "name": "tonk-scheduler-react",
+  "name": "syntime-react",
   "plan": {
     "platform": "react",
-    "projectName": "tonk-scheduler-react",
-    "description": "local first app for multiple people to collaboratively make a schedule "
+    "projectName": "synctime-react",
+    "description": "local first app to sync schedule"
   },
   "template": "react"
 }

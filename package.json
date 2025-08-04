@@ -1,5 +1,5 @@
 {
-	"name": "sync-time",
+	"name": "synctime",
 	"private": true,
 	"workspaces": [
 	  "apps/*"

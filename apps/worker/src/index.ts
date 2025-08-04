@@ -41,9 +41,7 @@ process.on("unhandledRejection", (reason, promise) => {
 })
 
 // Log startup information
-console.log(
-  `Starting tonk-scheduler-worker worker at ${new Date().toISOString()}`
-)
+console.log(`Starting synctime-worker at ${new Date().toISOString()}`)
 console.log(`Node.js version: ${process.version}`)
 console.log(`Platform: ${process.platform}`)
 
@@ -154,9 +152,7 @@ export async function startWorker(config: WorkerConfig): Promise<http.Server> {
   // Start the server
   return new Promise((resolve) => {
     server.listen(port, async () => {
-      console.log(
-        `tonk-scheduler-worker worker listening on http://localhost:${port}/tonk`
-      )
+      console.log(`synctime worker listening on http://localhost:${port}/tonk`)
       console.log("")
       console.log("🚀 Welcome to Tonk Workers!")
       console.log("")

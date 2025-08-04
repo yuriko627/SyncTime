@@ -16,7 +16,7 @@ import { startWorker } from "./index"
 const program = new Command()
 
 program
-  .name("tonk-scheduler-worker")
+  .name("synctime-worker")
   .description("App to make a schedule with other people privately")
   .version("1.0.0")
 
@@ -30,9 +30,7 @@ program
   )
   .action(async (options) => {
     try {
-      console.log(
-        `Starting tonk-scheduler-worker worker on port ${options.port}...`
-      )
+      console.log(`Starting synctime-worker worker on port ${options.port}...`)
       await startWorker({
         port: parseInt(options.port, 10)
       })
