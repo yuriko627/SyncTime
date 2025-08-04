@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { RefNode } from "@tonk/keepsync";
+import { RefNode } from "@yuriko627/keepsync";
 import { KeepsyncService } from "../services/keepsyncService";
 import FileItem from "../components/FileItem";
 import FileViewer from "./FileViewer";

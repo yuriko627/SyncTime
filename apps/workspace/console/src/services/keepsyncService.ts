@@ -1,4 +1,4 @@
-import { readDoc, writeDoc, ls, mkDir, rm, DocNode, DirNode } from "@tonk/keepsync";
+import { readDoc, writeDoc, ls, mkDir, rm, DocNode, DirNode } from "@yuriko627/keepsync";
 
 /**
  * Service for interacting with keepsync file system

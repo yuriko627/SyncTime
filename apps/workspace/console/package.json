@@ -12,7 +12,7 @@
     "dev:client": "vite",
     "dev:server": "pnpm --filter server dev",
     "clean": "rm -rf dist",
-    "build": "npm run clean && tsc && vite build && tsx scripts/exportApiConfig.ts",
+    "build": "npm run clean && tsc && vite build",
     "serve": "vite preview",
     "deployment": "tonk deploy",
     "test": "jest",

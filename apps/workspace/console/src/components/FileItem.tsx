@@ -1,5 +1,5 @@
 import React from "react";
-import { RefNode } from "@tonk/keepsync";
+import { RefNode } from "@yuriko627/keepsync";
 import { KeepsyncService } from "../services/keepsyncService.ts";
 
 interface FileItemProps {
