@@ -94,30 +94,34 @@ const EventDashboard: React.FC = () => {
   //   }
   // }, [eventId, eventData, syncedEventId, title, restoreParticipant])
 
-  // Handle case where synced event data becomes available from KeepSync (for other participants to join the event later)
+  // Load event data on mount - check localStorage first, then fall back to synced data
   useEffect(() => {
-    if (
-      eventId &&
-      !eventData &&
-      syncedEventId &&
-      syncedEventId === eventId &&
-      title
-    ) {
-      console.log(
-        "🧩 Synced event data became available from KeepSync, loading event data..."
-      )
-      const syncedEventData = {
-        eventId: syncedEventId,
-        title,
-        description,
-        duration,
-        organizerName,
-        createdAt
+    if (eventId && !eventData) {
+      // Check localStorage first (for event creator)
+      const locallyStoredEvent = localStorage.getItem(`event-${eventId}`)
+      
+      if (locallyStoredEvent) {
+        // Creator has event data in localStorage
+        const parsed = JSON.parse(locallyStoredEvent)
+        setEventData(parsed)
+      } else if (syncedEventId && syncedEventId === eventId && title) {
+        // Joiner gets data from KeepSync
+        console.log(
+          "🧩 Synced event data became available from KeepSync, loading event data..."
+        )
+        const syncedEventData = {
+          eventId: syncedEventId,
+          title,
+          description,
+          duration,
+          organizerName,
+          createdAt
+        }
+        console.log("🧩 Synced event data:", syncedEventData)
+        setEventData(syncedEventData)
+        // Store in localStorage for faster access next time
+        localStorage.setItem(`event-${eventId}`, JSON.stringify(syncedEventData))
       }
-      console.log("🧩 Synced event data:", syncedEventData)
-      setEventData(syncedEventData)
-      // Also store in localStorage for faster access next time
-      localStorage.setItem(`event-${eventId}`, JSON.stringify(syncedEventData))
     }
   }, [
     eventId,

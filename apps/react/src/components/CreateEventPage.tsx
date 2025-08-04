@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Calendar, Plus, Share2, Users, Clock } from "lucide-react"
-import { createEventStore } from "../stores/eventStore"
+import { createEventStore, eventStores } from "../stores/eventStore"
 
 const CreateEventPage: React.FC = () => {
   const [eventTitle, setEventTitle] = useState("")
@@ -43,8 +43,18 @@ const CreateEventPage: React.FC = () => {
 
       // Store event data in localStorage first
       localStorage.setItem(`event-${eventId}`, JSON.stringify(eventData))
-
       console.log("Stored the new event data to local storage")
+
+      // Create the event store for this eventId
+      if (!eventStores.has(eventId)) {
+        eventStores.set(eventId, createEventStore(eventId))
+      }
+
+      const store = eventStores.get(eventId)!
+
+      // Initialize the event state
+      store.getState().storeEventData(eventData)
+
       console.log("navigating to event join page...")
       navigate(`/event/${eventId}`)
     } catch (error) {

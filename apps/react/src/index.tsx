@@ -3,7 +3,7 @@ import "./index.css"
 import { createRoot } from "react-dom/client"
 import { BrowserRouter } from "react-router-dom"
 import App from "./App"
-import { configureSyncEngine } from "@tonk/keepsync"
+import { configureSyncEngine } from "@yuriko627/keepsync"
 import { BrowserWebSocketClientAdapter } from "@automerge/automerge-repo-network-websocket"
 import { IndexedDBStorageAdapter } from "@automerge/automerge-repo-storage-indexeddb"
 

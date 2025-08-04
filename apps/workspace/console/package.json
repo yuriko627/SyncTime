@@ -46,7 +46,7 @@
     "@automerge/automerge-repo-network-websocket": "^1.2.1",
     "@automerge/automerge-repo-storage-indexeddb": "^1.2.1",
     "@tonk/cli": "^0.2.6",
-    "@tonk/keepsync": "file:../../../../tonk/packages/keepsync",
+    "@yuriko627/keepsync": "^0.1.0-fix-initialize-sync",
     "lucide-react": "^0.475.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

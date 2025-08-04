@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { DocumentId, sync } from "@tonk/keepsync"
+import { DocumentId, sync } from "@yuriko627/keepsync"
 
 // Filter out KeepSync debug logs
 // const originalConsoleLog = console.log
@@ -206,13 +206,13 @@ const createEventStore = (eventId: string) => {
 
         // Store event data in KeepSync for cross-browser data sync
         storeEventData: (eventData) => {
+          console.log("🔥 storeEventData is getting called with:", eventData)
           console.log("📝 Current store state before update:", {
             eventId: get().eventId,
             title: get().title,
             organizerName: get().organizerName
           })
 
-          console.log("🔥 storeEventData is getting called with:", eventData)
           set((state) => {
             // Mutate nested object structure to help Automerge track diffs
             const updatedState = {
@@ -419,26 +419,26 @@ const createEventStore = (eventId: string) => {
         docId: `event/${eventId}` as DocumentId,
         initTimeout: 30000,
         onInitError: (error) =>
-          console.error("Event sync initialization error: ", error),
-        onInitComplete: () => {
-          console.log("🎉 Sync initialization complete for: ", eventId)
+          console.error("Event sync initialization error: ", error)
+        // onInitComplete: () => {
+        //   console.log("🎉 Sync initialization complete for: ", eventId)
 
-          // load event data from localStorage
-          let initialEventData: any = null
-          try {
-            const locallyStoredEvent = localStorage.getItem(`event-${eventId}`)
-            if (locallyStoredEvent) {
-              console.log("Found event in localStorage:", locallyStoredEvent)
-              initialEventData = JSON.parse(locallyStoredEvent)
-              const store = eventStores.get(eventId)
+        // load event data from localStorage
+        // let initialEventData: any = null
+        // try {
+        //   const locallyStoredEvent = localStorage.getItem(`event-${eventId}`)
+        //   if (locallyStoredEvent) {
+        //     console.log("Found event in localStorage:", locallyStoredEvent)
+        //     initialEventData = JSON.parse(locallyStoredEvent)
+        //     const store = eventStores.get(eventId)
 
-              // initialize the event state
-              store.getState().storeEventData(initialEventData)
-            }
-          } catch (error) {
-            console.error("Error loading initial event data:", error)
-          }
-        }
+        //     // initialize the event state
+        //     store.getState().storeEventData(initialEventData)
+        //   }
+        // } catch (error) {
+        //   console.error("Error loading initial event data:", error)
+        // }
+        // }
       }
     )
   )
@@ -449,8 +449,8 @@ const createEventStore = (eventId: string) => {
 // Store cache for event-specific stores
 const eventStores = new Map<string, ReturnType<typeof createEventStore>>()
 
-// Export the createEventStore function for direct use outside React components
-export { createEventStore }
+// Export the createEventStore function and eventStores for direct use outside React components
+export { createEventStore, eventStores }
 
 // Export a hook that gets the event-specific store
 export const useEventStore = (eventId: string) => {
