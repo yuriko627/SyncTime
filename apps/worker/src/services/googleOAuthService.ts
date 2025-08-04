@@ -10,7 +10,8 @@ export class GoogleOAuthService {
   private readonly SCOPES = [
     "https://www.googleapis.com/auth/calendar.readonly"
   ]
-  private readonly REDIRECT_URI = "http://localhost:5555/auth/google/callback"
+  private readonly REDIRECT_URI =
+    "https://synctime-server.app.tonk.xyz/synctime-worker/auth/google/callback"
 
   constructor() {
     this.oauth2Client = this.initializeOAuthClient()

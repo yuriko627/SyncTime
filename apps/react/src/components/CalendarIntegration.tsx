@@ -44,7 +44,7 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
 
     try {
       // Open OAuth window for participant authentication
-      const authUrl = `http://localhost:5555/auth/google/calendar?userId=${currentParticipantId}`
+      const authUrl = `https://synctime-server.app.tonk.xyz/synctime-worker/auth/google/calendar?userId=${currentParticipantId}`
 
       // Option 1: Open in same window (more reliable)
       // window.location.href = authUrl;
@@ -91,7 +91,7 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
 
     try {
       const response = await fetch(
-        `http://localhost:5555/auth/status?userId=${currentParticipantId}`
+        `https://synctime-server.app.tonk.xyz/synctime-worker/auth/status?userId=${currentParticipantId}`
       )
       const data = await response.json()
 
@@ -137,7 +137,7 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
     setIsSyncing(true)
 
     try {
-      const syncUrl = `http://localhost:5555/calendar/schedule/sync?eventId=${eventId}&participantId=${currentParticipantId}`
+      const syncUrl = `https://synctime-server.app.tonk.xyz/synctime-worker/calendar/schedule/sync?eventId=${eventId}&participantId=${currentParticipantId}`
       console.log("Calling sync endpoint:", syncUrl)
 
       const response = await fetch(syncUrl, {
@@ -182,7 +182,7 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
 
     try {
       await fetch(
-        `http://localhost:5555/auth/disconnect?userId=${currentParticipantId}`,
+        `https://synctime-server.app.tonk.xyz/synctime-worker/auth/disconnect?userId=${currentParticipantId}`,
         {
           method: "POST"
         }

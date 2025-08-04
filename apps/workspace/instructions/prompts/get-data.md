@@ -52,9 +52,9 @@ pnpm start       # Run production build
 
 ### Development Ports
 
-- Worker HTTP server: `http://localhost:5555` (configurable)
-- Health check: `http://localhost:5555/health`
-- Main endpoint: `http://localhost:5555/tonk`
+- Worker HTTP server: `https://synctime-server.app.tonk.xyz/synctime-worker` (configurable)
+- Health check: `https://synctime-server.app.tonk.xyz/synctime-worker/health`
+- Main endpoint: `https://synctime-server.app.tonk.xyz/synctime-worker/tonk`
 - KeepSync: WebSocket to `ws://localhost:7777/sync`
 
 ## Configuration Files

@@ -294,7 +294,7 @@ const createEventStore = (eventId: string) => {
 
           try {
             const response = await fetch(
-              `http://localhost:5555/calendar/schedule?participantId=${participantId}&eventId=${eventId}`
+              `https://synctime-server.app.tonk.xyz/synctime-worker/calendar/schedule?participantId=${participantId}&eventId=${eventId}`
             )
             const data = await response.json()
 
