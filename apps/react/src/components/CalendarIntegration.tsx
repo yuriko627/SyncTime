@@ -1,19 +1,43 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { useEventStore } from "../stores/eventStore"
+import {
+  storeGoogleToken,
+  getGoogleToken,
+  removeGoogleToken,
+  hasValidGoogleToken
+} from "../utils/tokenStorage"
+import {
+  storeLastSyncTime,
+  getLastSyncTime,
+  removeLastSyncTime
+} from "../utils/syncTimeStorage"
 import {
   Calendar,
   CheckCircle,
   XCircle,
-  ExternalLink,
   RefreshCw,
   Link,
   Unlink
 } from "lucide-react"
 
+// Google API types
+declare global {
+  interface Window {
+    google: any
+    gapi: any
+  }
+}
+
 interface CalendarIntegrationProps {
   eventId?: string
-  currentParticipantId?: string // Added to receive from parent component
+  currentParticipantId?: string
 }
+
+// Google Client ID - should be in environment variable
+// Vite uses import.meta.env instead of process.env
+const GOOGLE_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+  "YOUR_CLIENT_ID.apps.googleusercontent.com"
 
 const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
   eventId,
@@ -22,178 +46,288 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
   const {
     participants,
     updateParticipantState,
-    loadParticipantSchedule,
     syncParticipantSchedule: storeParticipantSchedule
-  } = useEventStore(eventId)
+  } = useEventStore(eventId || "")
 
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [connectionError, setConnectionError] = useState<string | null>(null)
+  const [isGoogleLoaded, setIsGoogleLoaded] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const [syncSuccess, setSyncSuccess] = useState(false)
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null)
+  const [isAutoSyncing, setIsAutoSyncing] = useState(false)
 
   const currentParticipant = currentParticipantId
     ? participants[currentParticipantId]
     : null
 
-  const handleConnectCalendar = async () => {
-    if (!currentParticipantId || !eventId) return
-
-    setIsConnecting(true)
-    setConnectionError(null)
-
-    try {
-      // Open OAuth window for participant authentication
-      const authUrl = `https://synctime-server.app.tonk.xyz/synctime-worker/auth/google/calendar?userId=${currentParticipantId}`
-
-      // Option 1: Open in same window (more reliable)
-      // window.location.href = authUrl;
-
-      // Option 2: Open in popup (current approach)
-      const authWindow = window.open(
-        authUrl,
-        "calendar_auth",
-        "width=500,height=600,scrollbars=yes,resizable=yes"
-      )
-
-      // Listen for auth completion
-      const checkAuthComplete = setInterval(() => {
-        try {
-          if (authWindow?.closed) {
-            clearInterval(checkAuthComplete)
-            // Check if auth was successful
-            checkAuthStatus(true)
+  // Check if Google libraries are loaded
+  useEffect(() => {
+    const checkGoogleLibraries = () => {
+      if (window.google && window.gapi) {
+        setIsGoogleLoaded(true)
+        // Initialize GAPI client
+        window.gapi.load("client", async () => {
+          try {
+            await window.gapi.client.init({
+              discoveryDocs: [
+                "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest"
+              ]
+            })
+            console.log("Google API client initialized")
+          } catch (error) {
+            console.error("Failed to initialize Google API client:", error)
           }
-        } catch (error) {
-          // Handle cross-origin policy errors
-          console.warn(
-            "Cannot check window.closed due to cross-origin policy, checking auth status anyway"
-          )
-          clearInterval(checkAuthComplete)
-          checkAuthStatus()
-        }
-      }, 1000)
-
-      // Also check auth status after a reasonable timeout
-      setTimeout(() => {
-        clearInterval(checkAuthComplete)
-        checkAuthStatus()
-      }, 30000) // 30 seconds timeout
-    } catch (error) {
-      setConnectionError("Failed to connect to Google Calendar")
-    } finally {
-      setIsConnecting(false)
+        })
+      }
     }
-  }
 
-  const checkAuthStatus = async (shouldSync = false) => {
-    if (!currentParticipantId) return
+    // Check immediately
+    checkGoogleLibraries()
 
-    try {
-      const response = await fetch(
-        `https://synctime-server.app.tonk.xyz/synctime-worker/auth/status?userId=${currentParticipantId}`
-      )
-      const data = await response.json()
+    // Also check on window load
+    const handleLoad = () => checkGoogleLibraries()
+    window.addEventListener("load", handleLoad)
 
-      if (data.connected) {
-        // Only update if calendar connection status has actually changed
-        const currentParticipantData = participants[currentParticipantId]
+    return () => {
+      window.removeEventListener("load", handleLoad)
+    }
+  }, [])
+
+  // Check if token exists on mount and load last sync time
+  useEffect(() => {
+    const checkTokenStatus = async () => {
+      if (currentParticipantId && eventId) {
+        const hasToken = await hasValidGoogleToken(
+          currentParticipantId,
+          eventId
+        )
         if (
-          currentParticipantData &&
-          !currentParticipantData.calendarConnected
+          hasToken &&
+          currentParticipant &&
+          !currentParticipant.calendarConnected
         ) {
-          console.log("Calendar status changed from disconnected to connected")
           updateParticipantState(currentParticipantId, {
             calendarConnected: true
           })
         }
 
-        // Only sync if explicitly requested or if this is the first time we're detecting the connection
-        if (shouldSync) {
-          console.log("Calendar connected, starting automatic sync...")
-          await syncParticipantSchedule()
+        // Load last sync time from storage
+        const storedSyncTime = getLastSyncTime(currentParticipantId, eventId)
+        if (storedSyncTime) {
+          setLastSyncTime(storedSyncTime)
         }
       }
-    } catch (error) {
-      console.error("Error checking auth status:", error)
     }
-  }
+    checkTokenStatus()
+  }, [currentParticipantId, eventId])
 
-  const syncParticipantSchedule = async () => {
-    if (!currentParticipantId || !eventId) {
-      console.error("Missing currentParticipantId or eventId", {
-        currentParticipantId,
-        eventId
-      })
+  // Silent sync function for auto-sync (no UI feedback/errors)
+  const performSilentSync = async () => {
+    if (!currentParticipantId || !eventId || !isGoogleLoaded || isSyncing || isAutoSyncing) {
       return
     }
 
-    console.log(
-      "Starting sync for participant:",
-      currentParticipantId,
-      "event:",
-      eventId
-    )
+    setIsAutoSyncing(true)
+    
+    try {
+      // Check if we have a valid stored token
+      const existingToken = await getGoogleToken(currentParticipantId, eventId)
+      
+      if (existingToken) {
+        // Silently fetch and sync calendar without showing UI feedback
+        await fetchAndSyncCalendar(existingToken, true) // Pass silent flag
+      }
+      // If no token, don't show OAuth popup - user needs to manually sync
+    } catch (error) {
+      console.log('Silent sync failed (this is normal):', error)
+      // Fail silently - user can manually sync if needed
+    } finally {
+      setIsAutoSyncing(false)
+    }
+  }
+
+  // Auto-sync when tab becomes visible (focus-based sync)
+  useEffect(() => {
+    let debounceTimeout: NodeJS.Timeout
+
+    const handleVisibilityChange = () => {
+      // Only sync if tab becomes visible and user has connected calendar
+      if (document.visibilityState === 'visible' && 
+          currentParticipant?.calendarConnected &&
+          !isSyncing && !isAutoSyncing) {
+        
+        // Debounce to prevent multiple rapid syncs
+        clearTimeout(debounceTimeout)
+        debounceTimeout = setTimeout(() => {
+          performSilentSync()
+        }, 1000) // 1 second debounce
+      }
+    }
+
+    // Listen for tab visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      clearTimeout(debounceTimeout)
+    }
+  }, [currentParticipant?.calendarConnected, isSyncing, isAutoSyncing, currentParticipantId, eventId, isGoogleLoaded])
+
+  const handleSyncGoogleCalendar = async () => {
+    if (!currentParticipantId || !eventId) {
+      console.error("Missing participantId or eventId")
+      return
+    }
+
+    if (!isGoogleLoaded) {
+      setSyncError("Google services not loaded. Please refresh the page.")
+      return
+    }
+
     setIsSyncing(true)
+    setSyncError(null)
+    setSyncSuccess(false)
 
     try {
-      const syncUrl = `https://synctime-server.app.tonk.xyz/synctime-worker/calendar/schedule/sync?eventId=${eventId}&participantId=${currentParticipantId}`
-      console.log("Calling sync endpoint:", syncUrl)
+      // Check if we have a stored token
+      const existingToken = await getGoogleToken(currentParticipantId, eventId)
 
-      const response = await fetch(syncUrl, {
-        method: "POST"
-      })
-
-      console.log("Sync response status:", response.status)
-      const data = await response.json()
-      console.log("Sync response data:", data)
-
-      if (response.ok && data.success && data.scheduleBlocks) {
-        console.log("Schedule sync successful:", data)
-
-        // Convert the schedule blocks from the response to the format expected by the store
-        const scheduleBlocks = Object.values(data.scheduleBlocks).map(
-          (block: any) => ({
-            startTime: block.startTime,
-            endTime: block.endTime,
-            lastSyncAt: block.lastSyncAt || Date.now()
-          })
-        )
-
-        // Store schedule blocks directly in the event document
-        storeParticipantSchedule(currentParticipantId, scheduleBlocks)
-
-        // Show success message and update last sync time
-        setSyncSuccess(true)
-        setLastSyncTime(new Date())
-        setTimeout(() => setSyncSuccess(false), 3000) // Hide after 3 seconds
+      if (existingToken) {
+        // Use existing token
+        console.log("Using existing token")
+        await fetchAndSyncCalendar(existingToken)
       } else {
-        console.error("Sync failed:", data)
+        // Request new token
+        console.log("Requesting new token")
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: "https://www.googleapis.com/auth/calendar.readonly",
+          callback: async (tokenResponse: any) => {
+            if (tokenResponse.error) {
+              setSyncError(`Authentication failed: ${tokenResponse.error}`)
+              setIsSyncing(false)
+              return
+            }
+
+            // Store token for future use
+            await storeGoogleToken(
+              currentParticipantId,
+              eventId,
+              tokenResponse.access_token,
+              tokenResponse.expires_in
+            )
+
+            // Update participant state
+            updateParticipantState(currentParticipantId, {
+              calendarConnected: true
+            })
+
+            // Fetch and sync calendar
+            await fetchAndSyncCalendar(tokenResponse.access_token)
+          }
+        })
+
+        // Request access token (opens popup)
+        tokenClient.requestAccessToken()
       }
     } catch (error) {
-      console.error("Error syncing participant schedule:", error)
-    } finally {
+      console.error("Sync failed:", error)
+      setSyncError("Failed to sync calendar. Please try again.")
       setIsSyncing(false)
     }
   }
 
-  const handleDisconnectCalendar = async () => {
-    if (!currentParticipantId) return
-
+  const fetchAndSyncCalendar = async (accessToken: string, silent: boolean = false) => {
     try {
-      await fetch(
-        `https://synctime-server.app.tonk.xyz/synctime-worker/auth/disconnect?userId=${currentParticipantId}`,
-        {
-          method: "POST"
-        }
-      )
+      // Set token in GAPI client
+      window.gapi.client.setToken({ access_token: accessToken })
 
-      updateParticipantState(currentParticipantId, { calendarConnected: false })
+      // Calculate time range (next 30 days)
+      const timeMin = new Date().toISOString()
+      const timeMax = new Date(
+        Date.now() + 30 * 24 * 60 * 60 * 1000
+      ).toISOString()
+
+      // Fetch calendar events
+      console.log("Fetching calendar events...")
+      const response = await window.gapi.client.calendar.events.list({
+        calendarId: "primary",
+        timeMin: timeMin,
+        timeMax: timeMax,
+        singleEvents: true,
+        orderBy: "startTime",
+        maxResults: 250 // Get more events for better availability picture
+      })
+
+      if (!response.result?.items) {
+        console.log("No events found")
+        const syncTime = new Date()
+        if (!silent) {
+          setSyncSuccess(true)
+        }
+        setLastSyncTime(syncTime)
+        storeLastSyncTime(currentParticipantId!, eventId!, syncTime)
+        setIsSyncing(false)
+        return
+      }
+
+      console.log(`Found ${response.result.items.length} events`)
+
+      // Convert to privacy-focused schedule blocks
+      // Include all events (even those marked as "free") since they might still be relevant for scheduling
+      const scheduleBlocks = response.result.items
+        .filter((event: any) => event.start && event.end)
+        .map((event: any) => ({
+          startTime: event.start.dateTime || event.start.date,
+          endTime: event.end.dateTime || event.end.date,
+          lastSyncAt: Date.now()
+        }))
+
+      console.log(`Converted to ${scheduleBlocks.length} schedule blocks`)
+
+      // Store schedule blocks in event store
+      storeParticipantSchedule(currentParticipantId!, scheduleBlocks)
+
+      // Update success state and store sync time
+      const syncTime = new Date()
+      if (!silent) {
+        setSyncSuccess(true)
+        // Clear success message after 3 seconds
+        setTimeout(() => setSyncSuccess(false), 3000)
+      }
+      setLastSyncTime(syncTime)
+      storeLastSyncTime(currentParticipantId!, eventId!, syncTime)
     } catch (error) {
-      console.error("Error disconnecting calendar:", error)
+      console.error("Failed to fetch calendar events:", error)
+      if (!silent) {
+        setSyncError("Failed to fetch calendar events. Please try again.")
+      }
+    } finally {
+      setIsSyncing(false)
+      // Clear token from GAPI client
+      window.gapi.client.setToken(null)
     }
   }
 
+  const handleDisconnectCalendar = async () => {
+    if (!currentParticipantId || !eventId) return
+
+    // Remove stored token
+    removeGoogleToken(currentParticipantId, eventId)
+
+    // Clear schedule blocks
+    storeParticipantSchedule(currentParticipantId, [])
+
+    // Update participant state
+    updateParticipantState(currentParticipantId, { calendarConnected: false })
+
+    // Reset UI state and remove stored sync time
+    setLastSyncTime(null)
+    removeLastSyncTime(currentParticipantId, eventId)
+    setSyncSuccess(false)
+  }
+
+  // Don't render if no participant
   if (!currentParticipant) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -202,6 +336,18 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
           <p className="text-gray-500">
             Please join the event to connect calendar
           </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Loading state
+  if (!isGoogleLoaded) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 mx-auto mb-3 text-blue-500 animate-spin" />
+          <p className="text-gray-600">Loading Google services...</p>
         </div>
       </div>
     )
@@ -230,36 +376,35 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
             <Calendar className="w-6 h-6 text-blue-500" />
             <div className="flex-1">
               <h4 className="font-medium text-blue-900">
-                Connect Google Calendar
+                Sync Google Calendar
               </h4>
               <p className="text-sm text-blue-700 mt-1">
-                Share your availability privately to find the best meeting times
+                Share your availability to find the best meeting times
               </p>
             </div>
           </div>
 
-          {connectionError && (
+          {syncError && (
             <div className="flex items-center space-x-3 p-4 bg-red-50 rounded-lg">
               <XCircle className="w-5 h-5 text-red-500" />
-              <p className="text-sm text-red-700">{connectionError}</p>
+              <p className="text-sm text-red-700">{syncError}</p>
             </div>
           )}
 
           <button
-            onClick={handleConnectCalendar}
-            disabled={isConnecting}
+            onClick={handleSyncGoogleCalendar}
+            disabled={isSyncing}
             className="w-full flex items-center justify-center space-x-2 bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isConnecting ? (
+            {isSyncing ? (
               <>
                 <RefreshCw className="w-5 h-5 animate-spin" />
-                <span>Connecting...</span>
+                <span>Syncing...</span>
               </>
             ) : (
               <>
                 <Link className="w-5 h-5" />
-                <span>Connect Google Calendar</span>
-                <ExternalLink className="w-4 h-4" />
+                <span>Sync Google Calendar</span>
               </>
             )}
           </button>
@@ -284,19 +429,10 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
             </div>
           </div>
 
-          {syncSuccess && (
-            <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-blue-500" />
-              <p className="text-sm text-blue-700">
-                Calendar sync completed! Your availability is now updated.
-              </p>
-            </div>
-          )}
-
           <div className="flex items-center space-x-3">
             <div className="flex flex-col sm:flex-row gap-2 w-full">
               <button
-                onClick={syncParticipantSchedule}
+                onClick={handleSyncGoogleCalendar}
                 disabled={isSyncing}
                 className="flex-[3] flex items-center justify-center space-x-1 bg-blue-500 text-white py-2 px-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
@@ -308,7 +444,7 @@ const CalendarIntegration: React.FC<CalendarIntegrationProps> = ({
                 ) : (
                   <>
                     <RefreshCw className="w-4 h-4" />
-                    <span>Sync Now</span>
+                    <span>Sync Again</span>
                   </>
                 )}
               </button>

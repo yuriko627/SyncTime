@@ -26,15 +26,7 @@ interface AvailabilityViewProps {
 }
 
 const AvailabilityView: React.FC<AvailabilityViewProps> = ({ eventId }) => {
-  const {
-    participants,
-    scheduleBlocks,
-    title,
-    duration,
-    organizerName,
-    findCommonAvailability,
-    loadParticipantSchedule
-  } = useEventStore(eventId)
+  const { participants, scheduleBlocks } = useEventStore(eventId)
 
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [selectedDuration, setSelectedDuration] = useState(30)
@@ -47,28 +39,6 @@ const AvailabilityView: React.FC<AvailabilityViewProps> = ({ eventId }) => {
   const connectedParticipants = activeParticipants.filter(
     (participant) => participant.calendarConnected
   )
-
-  // TEMPORARILY DISABLE schedule loading to stop the exponential concatenation
-  // TODO: Need to find a better solution that doesn't cause merge conflicts
-
-  // Load schedule blocks for all connected participants
-  // useEffect(() => {
-  //   const loadScheduleBlocks = async () => {
-  //     for (const participant of connectedParticipants) {
-  //       await loadParticipantSchedule(participant.id)
-  //     }
-  //   }
-
-  //   if (connectedParticipants.length > 0) {
-  //     loadScheduleBlocks()
-  //   }
-  // }, [connectedParticipants.length, loadParticipantSchedule])
-
-  // Debug: Log schedule blocks to console (removed to prevent infinite logs)
-  // useEffect(() => {
-  //   console.log("Schedule blocks in store:", scheduleBlocks)
-  //   console.log("Connected participants:", connectedParticipants)
-  // }, [scheduleBlocks, connectedParticipants])
 
   // Generate time slots for the selected date
   const timeSlots = useMemo(() => {
@@ -107,11 +77,11 @@ const AvailabilityView: React.FC<AvailabilityViewProps> = ({ eventId }) => {
             const hasConflict = participantSchedule.some((block) => {
               const blockStart = new Date(block.startTime)
               const blockEnd = new Date(block.endTime)
-              const overlap = blockStart < slotEnd && blockEnd > slotTime
+              const blockedSlot = blockStart < slotEnd && blockEnd > slotTime
 
-              // Debug log for overlapping blocks only
-              if (overlap) {
-                console.log("Found overlap for slot:", {
+              // Debug log for blocked slots only
+              if (blockedSlot) {
+                console.log("Found busy slot:", {
                   slotTime: slotTime.toLocaleString(),
                   blockStart: blockStart.toLocaleString(),
                   blockEnd: blockEnd.toLocaleString(),
@@ -119,19 +89,19 @@ const AvailabilityView: React.FC<AvailabilityViewProps> = ({ eventId }) => {
                 })
               }
 
-              return overlap
+              return blockedSlot
             })
 
             availability[participant.id] = hasConflict ? "busy" : "available"
 
             // Debug log for busy slots only
-            if (hasConflict) {
-              console.log("Slot marked as busy:", {
-                slotTime: slotTime.toLocaleString(),
-                participantId: participant.id,
-                participantName: participant.name
-              })
-            }
+            // if (hasConflict) {
+            //   console.log("Slot marked as busy:", {
+            //     slotTime: slotTime.toLocaleString(),
+            //     participantId: participant.id,
+            //     participantName: participant.name
+            //   })
+            // }
           }
         })
 

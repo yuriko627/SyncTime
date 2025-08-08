@@ -90,7 +90,6 @@ interface ScheduleState {
 
   // Event management (sync with worker)
   syncEvents: (events: Record<string, ScheduleEvent>) => void
-  loadUserCalendarEvents: (userId: string) => Promise<void>
 
   // Helper functions
   getEventsForUser: (userId: string) => ScheduleEvent[]
@@ -271,56 +270,6 @@ export const useScheduleStore = create<ScheduleState>(
       // Event management
       syncEvents: (events) => {
         set({ events })
-      },
-
-      // Load calendar events from KeepSync for a specific user
-      loadUserCalendarEvents: async (userId) => {
-        try {
-          const response = await fetch(
-            `https://synctime-server.app.tonk.xyz/synctime-worker/calendar/events?userId=${userId}`
-          )
-          const data = await response.json()
-
-          if (data.success && data.events) {
-            // Convert calendar events to ScheduleEvent format and merge with existing events
-            const calendarEvents: Record<string, ScheduleEvent> = {}
-
-            data.events.forEach((event: any) => {
-              calendarEvents[event.id] = {
-                id: event.id,
-                title: event.title,
-                description: event.description,
-                startTime: event.startTime,
-                endTime: event.endTime,
-                isAllDay: event.isAllDay,
-                location: event.location,
-                attendees: event.attendees,
-                status: event.status,
-                sourceCalendarId: event.sourceCalendarId,
-                sourceEventId: event.sourceEventId,
-                calendarName: event.calendarName,
-                importedBy: event.importedBy,
-                createdAt: event.createdAt,
-                updatedAt: event.updatedAt,
-                lastSyncAt: event.lastSyncAt
-              }
-            })
-
-            // Merge calendar events with existing events
-            set((state) => ({
-              events: {
-                ...state.events,
-                ...calendarEvents
-              }
-            }))
-
-            console.log(
-              `Loaded ${data.events.length} calendar events for user ${userId}`
-            )
-          }
-        } catch (error) {
-          console.error("Error loading calendar events:", error)
-        }
       },
 
       // Helper functions

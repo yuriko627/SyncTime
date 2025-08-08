@@ -1,9 +1,0 @@
-{
-  "name": "synctime-worker",
-  "plan": {
-    "platform": "worker",
-    "projectName": "synctime-worker",
-    "description": "Backend for a private & collaborative scheduling app"
-  },
-  "template": "worker"
-}

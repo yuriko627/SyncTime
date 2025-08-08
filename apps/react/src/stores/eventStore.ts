@@ -1,20 +1,6 @@
 import { create } from "zustand"
 import { DocumentId, sync } from "@yuriko627/keepsync"
 
-// Filter out KeepSync debug logs
-// const originalConsoleLog = console.log
-// console.log = (...args: any[]) => {
-//   const message = args.join(" ")
-//   if (
-//     message.includes("sync-middleware") ||
-//     message.includes("Received doc change") ||
-//     message.includes("updating Zustand store")
-//   ) {
-//     return // Suppress these logs
-//   }
-//   originalConsoleLog.apply(console, args)
-// }
-
 // Event-specific participant type
 export interface EventParticipant {
   name: string
@@ -41,16 +27,6 @@ interface EventState {
   participants: Record<string, EventParticipant>
   scheduleBlocks: Record<string, ScheduleBlock>
 
-  // Actions to update event states
-  // Event management:
-  // loadEventData: (eventData: {
-  //   eventId: string
-  //   title: string
-  //   description?: string
-  //   duration: number
-  //   organizerName: string
-  //   createdAt: number
-  // }) => void
   storeEventData: (eventData: {
     eventId: string
     title: string
@@ -77,7 +53,6 @@ interface EventState {
     participantId: string,
     scheduleBlocks: ScheduleBlock[]
   ) => void
-  loadParticipantSchedule: (participantId: string) => Promise<void>
 
   // Availability helpers
   getScheduleForParticipant: (participantId: string) => ScheduleBlock[]
@@ -186,24 +161,6 @@ const createEventStore = (eventId: string) => {
           })
         },
 
-        // Event management
-        // loadEventData: (eventData) => {
-        //   console.log("🧩loadEventData called")
-        //   set((state) => ({
-        //     eventId: eventData.eventId,
-        //     title: eventData.title,
-        //     description: eventData.description,
-        //     duration: eventData.duration,
-        //     organizerName: eventData.organizerName,
-        //     createdAt: eventData.createdAt,
-        //     // Only clear data if switching to a different event
-        //     participants:
-        //       state.eventId === eventData.eventId ? state.participants : {},
-        //     scheduleBlocks:
-        //       state.eventId === eventData.eventId ? state.scheduleBlocks : {}
-        //   }))
-        // },
-
         // Store event data in KeepSync for cross-browser data sync
         storeEventData: (eventData) => {
           console.log("🔥 storeEventData is getting called with:", eventData)
@@ -286,38 +243,6 @@ const createEventStore = (eventId: string) => {
 
             return { scheduleBlocks: newScheduleBlocks }
           })
-        },
-
-        loadParticipantSchedule: async (participantId) => {
-          const { eventId } = get()
-          if (!eventId) return
-
-          try {
-            const response = await fetch(
-              `https://synctime-server.app.tonk.xyz/synctime-worker/calendar/schedule?participantId=${participantId}&eventId=${eventId}`
-            )
-            const data = await response.json()
-
-            if (data.success && data.scheduleBlocks) {
-              const scheduleBlocks: ScheduleBlock[] = data.scheduleBlocks.map(
-                (block: any) => {
-                  // Ensure field order: startTime -> endTime -> lastSyncAt
-                  return {
-                    startTime: block.startTime,
-                    endTime: block.endTime,
-                    lastSyncAt: block.lastSyncAt
-                  }
-                }
-              )
-
-              get().syncParticipantSchedule(participantId, scheduleBlocks)
-              // get().updateCalendarSyncStatus(participantId, true);
-
-              // Schedule blocks loaded successfully
-            }
-          } catch (error) {
-            console.error("Error loading participant schedule:", error)
-          }
         },
 
         // Helper functions
@@ -420,25 +345,6 @@ const createEventStore = (eventId: string) => {
         initTimeout: 30000,
         onInitError: (error) =>
           console.error("Event sync initialization error: ", error)
-        // onInitComplete: () => {
-        //   console.log("🎉 Sync initialization complete for: ", eventId)
-
-        // load event data from localStorage
-        // let initialEventData: any = null
-        // try {
-        //   const locallyStoredEvent = localStorage.getItem(`event-${eventId}`)
-        //   if (locallyStoredEvent) {
-        //     console.log("Found event in localStorage:", locallyStoredEvent)
-        //     initialEventData = JSON.parse(locallyStoredEvent)
-        //     const store = eventStores.get(eventId)
-
-        //     // initialize the event state
-        //     store.getState().storeEventData(initialEventData)
-        //   }
-        // } catch (error) {
-        //   console.error("Error loading initial event data:", error)
-        // }
-        // }
       }
     )
   )
