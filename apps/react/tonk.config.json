@@ -1,8 +1,8 @@
 {
-  "name": "synctime-react",
+  "name": "app",
   "plan": {
     "platform": "react",
-    "projectName": "synctime-react",
+    "projectName": "app",
     "description": "local first app to sync schedule"
   },
   "template": "react"
